@@ -21,7 +21,7 @@ alter table [Retail.OrderHistory.2.csv]
 Alter column Order_Date date;
 
 select top 10 * from [Retail.OrderHistory.2.csv];
-'''A) Orders & Time (Overall Business Health)'''
+''' A) Orders & Time (Overall Business Health) '''
 
 -- 1. What is the total number of orders over time (daily, monthly, quarterly)?
 -- Daily
