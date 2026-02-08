@@ -102,6 +102,34 @@ from monthOrderCTE m CROSS JOIN monthAvgOrders ma
 order by m.OrderMonth;
 
 -- 4. How many unique orders exist vs total rows (to confirm that one order can have multiple items)?
+select count(Order_ID) as TotalRows, 
+count(distinct Order_ID) AS TotalOrders
+from [dbo].[Retail.OrderHistory.2.csv];
+
+-- 5 - Is there any seasonality in orders (festival spikes, weekend trends, etc.)?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
