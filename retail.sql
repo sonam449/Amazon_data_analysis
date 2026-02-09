@@ -21,7 +21,19 @@ alter table [Retail.OrderHistory.2.csv]
 Alter column Order_Date date;
 
 select top 10 * from [Retail.OrderHistory.2.csv];
-''' A) Orders & Time (Overall Business Health) '''
+
+-------------------------------------------------------------------------
+--                     Data Cleaning                                   --
+-------------------------------------------------------------------------
+-- SELECT DISTINCT(Shipment_Status) from [Retail.OrderHistory.2.csv];
+-- outputs - Not Available, Shipped and Shipped and Shipped, Shipped and Shipped, Shipped
+
+UPDATE [dbo].[Retail.OrderHistory.2.csv]
+SET Shipment_Status = 'Shipped'
+WHERE Shipment_Status LIKE '%Shipped%';
+
+
+'''''''''''''''''' A) Orders & Time (Overall Business Health) ''''''''''''''''
 
 -- 1. What is the total number of orders over time (daily, monthly, quarterly)?
 -- Daily
@@ -29,7 +41,7 @@ select FORMAT(Order_Date, 'dd/MM/yyyy') Daily,
 COUNT(DISTINCT Order_ID) AS TotalOrders,
 STRING_AGG(Product_Name, ',') ProductName
 from [Retail.OrderHistory.2.csv]
-WHERE Shipment_Status = 'Shipped'
+WHERE Order_Status = 'Closed'
 group by FORMAT(Order_Date, 'dd/MM/yyyy')
 order by COUNT(DISTINCT Order_ID) desc;
 
@@ -38,7 +50,7 @@ select format(Order_Date, 'MM/yyyy') OrderDate,
 count(distinct Order_ID) AS TotalOrders, 
 STRING_AGG(Product_Name, ', ') AllProductNames
 from [Retail.OrderHistory.2.csv]
-WHERE Shipment_Status = 'Shipped'
+WHERE Order_Status = 'Closed'
 Group by format(Order_Date, 'MM/yyyy')
 order by count(distinct Order_ID) desc
 
@@ -46,13 +58,14 @@ order by count(distinct Order_ID) desc
 select format(Order_Date, 'yyyy') OrderYear,  
 count(distinct Order_ID) AS TotalOrders
 from [Retail.OrderHistory.2.csv]
-WHERE Shipment_Status = 'Shipped'
+WHERE Order_Status = 'Closed'
 Group by format(Order_Date, 'yyyy')
 order by count(distinct Order_ID) desc
 
 -- 2. What is the overall date range of my data (first order vs last order)?
 select min([Order_Date]) minDate, max([Order_Date]) MaxDate
-from [Retail.OrderHistory.2.csv];
+from [Retail.OrderHistory.2.csv]
+WHERE Order_Status = 'Closed';
 
 -- 3. Are there any days/months with unusually high or low orders? (that is needs to compare with mean+-std or just mean!)
 -- Daily
@@ -60,7 +73,7 @@ with dailyOrdersCTE as (
 		select format(Order_Date, 'dd/MM/yyyy') OrderDate, 
 		count(distinct Order_ID) AS TotalOrders
 		from [Retail.OrderHistory.2.csv]
-		where Shipment_Status = 'Shipped'
+		WHERE Order_Status = 'Closed'
 		group by format(Order_Date, 'dd/MM/yyyy')
 ), 
 avg_orders as (
@@ -84,13 +97,12 @@ WITH monthOrderCTE AS (
 SELECT FORMAT(Order_date, 'MM/yyyy') OrderMonth,
 		count(distinct Order_ID) MonthOrd
 		FROM [Retail.OrderHistory.2.csv]
-		WHERE Shipment_Status = 'Shipped'
+		WHERE Order_Status = 'Closed'
 		GROUP BY FORMAT(Order_date, 'MM/yyyy')
 		), 
 monthAvgOrders as (
 select avg(MonthOrd) MonthAvgOrd
-from monthOrderCTE
-)
+from monthOrderCTE)
 
 select m.OrderMonth, 
 m.MonthOrd,
@@ -104,37 +116,46 @@ order by m.OrderMonth;
 -- 4. How many unique orders exist vs total rows (to confirm that one order can have multiple items)?
 select count(Order_ID) as TotalRows, 
 count(distinct Order_ID) AS TotalOrders
-from [dbo].[Retail.OrderHistory.2.csv];
-
--- 5 - Is there any seasonality in orders (festival spikes, weekend trends, etc.)?
-
+from [dbo].[Retail.OrderHistory.2.csv]
+WHERE Order_Status = 'Closed';
 
 
+-- Is there any seasonality in orders (festival spikes, avgweek trends, month day trends, month trends, monthwise
+--monthwise disribution
+WITH monthCTE AS (
+	select CAST(Order_Date AS Date) OrderDate,
+	format(Order_Date, 'MM') monthNum,
+	count(distinct Order_ID) ordCount
+	FROM [dbo].[Retail.OrderHistory.2.csv]
+	WHERE Order_Status = 'Closed'
+	GROUP BY CAST(Order_Date AS Date), format(Order_Date, 'MM'))
+SELECT monthNum, AVG(ordCount*1.0), SUM(ordCount) NumOfOrders
+from monthCTE
+group by monthNum;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- weekwise distribution
+WITH WeekCTE AS (
+	select CAST(Order_Date AS DATE) DATEE,
+	FORMAT(Order_Date, 'ddd') DayNamee,
+	count(Distinct Order_ID) ordCount
+	FROM [dbo].[Retail.OrderHistory.2.csv]
+	WHERE Order_Status = 'Closed'
+	GROUP BY CAST(Order_Date AS DATE), format(Order_Date, 'ddd'))
+SELECT DayNamee, 
+AVG(ordCount*1.0) AvgOrders, 
+SUM(ordCount) NumOfOrders
+from WeekCTE
+group by DayNamee
+order by case DayNamee
+		when 'Mon' then 1
+		when 'Tue' then 2
+		when 'Wed' then 3
+		when 'Thu' then 4
+		when 'Fri' then 5
+		when 'Sat' then 6
+		when 'Sun'then 7
+		end;
 
 
 
